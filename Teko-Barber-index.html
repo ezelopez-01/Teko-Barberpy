@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#111111">
+<title>Teko Barber | Fidelidad</title>
+<link rel="manifest" href="manifest.json">
+<style>
+:root{--bg:#101010;--panel:#1b1b1b;--gold:#c9a46a;--muted:#b9b9b9;--white:#f7f4ee}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--white);font-family:Arial,sans-serif}
+header{padding:26px 18px 18px;text-align:center;border-bottom:1px solid #333}
+.logo{font-size:30px;font-weight:800;letter-spacing:3px}.logo span{color:var(--gold)}
+header p{margin:7px 0 0;color:var(--muted);font-size:13px;letter-spacing:2px}
+main{max-width:560px;margin:24px auto;padding:0 16px 40px}
+.card{background:var(--panel);border:1px solid #383838;border-radius:18px;padding:20px;margin:16px 0;box-shadow:0 10px 25px #0005}
+h1{font-size:23px;margin:0 0 8px}h2{font-size:18px;margin:0 0 14px}
+p{line-height:1.5;color:var(--muted)}label{display:block;margin:13px 0 6px;font-size:13px;color:#ddd}
+input{width:100%;padding:14px;border-radius:10px;border:1px solid #555;background:#101010;color:white;font-size:16px}
+button{width:100%;padding:14px;border:0;border-radius:10px;background:var(--gold);color:#17120b;font-weight:700;font-size:15px;margin-top:14px}
+button.secondary{background:#333;color:white;border:1px solid #555}
+.small{font-size:12px;color:#aaa}.hidden{display:none!important}
+.stamps{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:18px 0}
+.stamp{aspect-ratio:1;border:1px solid var(--gold);border-radius:50%;display:grid;place-items:center;color:var(--gold);font-size:21px;font-weight:bold}
+.stamp.done{background:var(--gold);color:#17120b}
+.status{padding:12px;border-radius:10px;background:#29251e;color:#f2d9ad;font-size:13px}
+hr{border:0;border-top:1px solid #383838;margin:18px 0}
+footer{text-align:center;color:#777;font-size:12px;padding:15px}
+a{color:var(--gold)}
+</style>
+</head>
+<body>
+<header><div class="logo">TEKO <span>BARBER</span></div><p>TARJETA DE FIDELIDAD</p></header>
+<main>
+<section class="card" id="client">
+<h1>Tu tarjeta de fidelidad</h1>
+<p>Registrá tus datos para consultar tus visitas y solicitar la confirmación de una visita.</p>
+<label for="name">Nombre y apellido</label><input id="name" autocomplete="name" placeholder="Tu nombre">
+<label for="phone">Número de teléfono</label><input id="phone" inputmode="tel" autocomplete="tel" placeholder="Ej.: 0981 123 456">
+<button id="load">Ver mi tarjeta</button>
+<div id="customerArea" class="hidden">
+<hr><h2 id="welcome"></h2><div class="stamps" id="stamps"></div>
+<div class="status" id="customerStatus">Tus visitas confirmadas aparecerán aquí.</div>
+<button id="request">Solicitar confirmación de visita</button>
+<p class="small">La visita queda pendiente hasta que Teko Barber la confirme.</p>
+</div>
+</section>
+<section class="card">
+<h2>Acceso del barbero</h2>
+<p>Panel para revisar y confirmar solicitudes de visita.</p>
+<button class="secondary" id="adminToggle">Abrir panel del barbero</button>
+<div id="adminArea" class="hidden">
+<label for="pin">Código de acceso</label><input id="pin" type="password" inputmode="numeric" placeholder="Código del barbero">
+<button id="adminLogin">Entrar</button>
+<div id="requests"></div>
+</div>
+</section>
+<section class="card">
+<h2>¿Cómo funciona?</h2>
+<p>Completá 5 visitas confirmadas y recibí 1 corte gratis. Cada solicitud debe ser aprobada por el barbero.</p>
+</section>
+</main>
+<footer>© Teko Barber</footer>
+<script>
+/*
+  IMPORTANTE:
+  Esta primera versión es una maqueta funcional en este dispositivo.
+  Para compartir clientes/visitas entre distintos celulares y recibir avisos,
+  hay que conectar una base de datos en la nube (por ejemplo Supabase) y activar
+  sus reglas de seguridad. No cargues datos reales de clientes hasta completar
+  esa conexión.
+*/
+const KEY='teko_barber_demo_v1';
+const $=id=>document.getElementById(id);
+const getData=()=>JSON.parse(localStorage.getItem(KEY)||'{"customers":{},"requests":[]}');
+const saveData=d=>localStorage.setItem(KEY,JSON.stringify(d));
+let currentPhone='';
+function keyPhone(v){return v.replace(/\D/g,'')}
+function renderCustomer(phone){
+ const d=getData(), c=d.customers[phone]||{name:$('name').value.trim(),visits:0};
+ $('customerArea').classList.remove('hidden');$('welcome').textContent='Hola, '+c.name;
+ $('stamps').innerHTML='';
+ for(let i=0;i<5;i++){let el=document.createElement('div');el.className='stamp'+(i<c.visits?' done':'');el.textContent=i<c.visits?'✓':(i+1);$('stamps').appendChild(el)}
+ const pending=d.requests.some(r=>r.phone===phone&&r.status==='Pendiente');
+ $('customerStatus').textContent=c.visits>=5?'¡Completaste 5 visitas! Consultá tu corte gratis con el barbero.':pending?'Tu solicitud está pendiente de confirmación.':`Tenés ${c.visits} de 5 visitas confirmadas.`;
+}
+$('load').onclick=()=>{
+ const name=$('name').value.trim(),phone=keyPhone($('phone').value);
+ if(!name||phone.length<6){alert('Ingresá tu nombre y un teléfono válido.');return}
+ currentPhone=phone;const d=getData();if(!d.customers[phone])d.customers[phone]={name,visits:0};else d.customers[phone].name=name;saveData(d);renderCustomer(phone);
+};
+$('request').onclick=()=>{
+ if(!currentPhone)return;const d=getData();
+ if(d.requests.some(r=>r.phone===currentPhone&&r.status==='Pendiente')){alert('Ya tenés una solicitud pendiente.');return}
+ const c=d.customers[currentPhone];d.requests.unshift({id:Date.now(),phone:currentPhone,name:c.name,created:new Date().toLocaleString('es-PY'),status:'Pendiente'});saveData(d);renderCustomer(currentPhone);alert('Solicitud registrada en este dispositivo. En esta versión de prueba, el barbero debe revisar el mismo dispositivo.');
+};
+$('adminToggle').onclick=()=>$('adminArea').classList.toggle('hidden');
+$('adminLogin').onclick=()=>{
+ if($('pin').value!=='2580'){alert('Código incorrecto para esta demostración.');return}
+ const d=getData(), box=$('requests');box.innerHTML='<hr><h2>Solicitudes</h2>';
+ if(!d.requests.length){box.innerHTML+='<p>No hay solicitudes.</p>';return}
+ d.requests.forEach(r=>{
+  const row=document.createElement('div');row.className='card';row.innerHTML=`<b>${r.name}</b><p>Tel.: ${r.phone}<br>${r.created}<br>Estado: ${r.status}</p>`;
+  if(r.status==='Pendiente'){const b=document.createElement('button');b.textContent='Confirmar visita';b.onclick=()=>{const data=getData(),req=data.requests.find(x=>x.id===r.id);if(req&&req.status==='Pendiente'){req.status='Confirmada';let c=data.customers[req.phone];c.visits=Math.min(5,c.visits+1);saveData(data);$('adminLogin').click();if(currentPhone===req.phone)renderCustomer(currentPhone)}};row.appendChild(b)}
+  box.appendChild(row);
+ });
+};
+if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+</script>
+</body></html>
